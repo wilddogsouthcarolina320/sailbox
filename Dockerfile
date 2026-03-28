@@ -13,9 +13,11 @@ RUN go mod download
 COPY apps/api/ ./
 ARG VERSION=dev
 ARG TARGETOS TARGETARCH
+# VERSION in the RUN command ensures cache busts when version changes
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath \
     -ldflags "-s -w -X github.com/sailboxhq/sailbox/apps/api/internal/version.Version=${VERSION}" \
-    -o /usr/local/bin/sailbox-api ./cmd/server
+    -o /usr/local/bin/sailbox-api ./cmd/server && \
+    echo "Built version: ${VERSION}"
 
 # ============================================================================
 # Stage 2: Build frontend (platform-independent, build once)
