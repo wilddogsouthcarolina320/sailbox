@@ -172,6 +172,34 @@ func (s *NotificationService) SaveSMTPConfig(ctx context.Context, cfg *SMTPConfi
 	return s.settings.SaveSMTPConfig(ctx, cfg)
 }
 
+// SendInvitationEmail sends a team invitation email with the invite link.
+func (s *NotificationService) SendInvitationEmail(ctx context.Context, toEmail, role, inviteURL string) error {
+	cfg, err := s.settings.GetSMTPConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get SMTP config: %w", err)
+	}
+	if !cfg.Enabled || cfg.Host == "" {
+		return fmt.Errorf("SMTP is not configured")
+	}
+	if cfg.From == "" {
+		return fmt.Errorf("SMTP from address is not configured")
+	}
+
+	subject := "You've been invited to join Sailbox"
+	htmlBody := fmt.Sprintf(`<html><body style="font-family:sans-serif;color:#333;max-width:600px;margin:0 auto">
+<h2 style="color:#2563eb">Sailbox Team Invitation</h2>
+<p>You've been invited to join a Sailbox team as <strong>%s</strong>.</p>
+<p><a href="%s" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Accept Invitation</a></p>
+<p style="margin-top:16px;font-size:13px;color:#666">Or copy this link: %s</p>
+<p style="font-size:12px;color:#999">This invitation expires in 7 days.</p>
+</body></html>`, role, inviteURL, inviteURL)
+
+	msg := fmt.Sprintf("Subject: %s\r\nFrom: %s\r\nTo: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
+		subject, cfg.From, toEmail, htmlBody)
+
+	return dialAndSendSMTP(cfg, cfg.From, []string{toEmail}, []byte(msg))
+}
+
 // TestSMTP sends a test email using the current SMTP configuration.
 func (s *NotificationService) TestSMTP(ctx context.Context) error {
 	cfg, err := s.settings.GetSMTPConfig(ctx)

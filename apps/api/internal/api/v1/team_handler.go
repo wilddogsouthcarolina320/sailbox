@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -13,11 +14,13 @@ import (
 )
 
 type TeamHandler struct {
-	svc *service.TeamService
+	svc      *service.TeamService
+	notifSvc *service.NotificationService
+	appURL   string
 }
 
-func NewTeamHandler(svc *service.TeamService) *TeamHandler {
-	return &TeamHandler{svc: svc}
+func NewTeamHandler(svc *service.TeamService, notifSvc *service.NotificationService, appURL string) *TeamHandler {
+	return &TeamHandler{svc: svc, notifSvc: notifSvc, appURL: appURL}
 }
 
 // ListMembers returns all members of the current organization.
@@ -101,14 +104,18 @@ func (h *TeamHandler) InviteMember(c *gin.Context) {
 		return
 	}
 
-	scheme := "https"
-	if c.Request.TLS == nil {
-		scheme = "http"
+	inviteURL := fmt.Sprintf("%s/auth/invite?token=%s", strings.TrimRight(h.appURL, "/"), inv.Token)
+
+	// Best-effort: send invitation email if SMTP is configured
+	emailSent := false
+	if err := h.notifSvc.SendInvitationEmail(c.Request.Context(), input.Email, input.Role, inviteURL); err == nil {
+		emailSent = true
 	}
-	inviteURL := fmt.Sprintf("%s://%s/auth/invite?token=%s", scheme, c.Request.Host, inv.Token)
+
 	httputil.RespondCreated(c, gin.H{
 		"invitation": inv,
 		"invite_url": inviteURL,
+		"email_sent": emailSent,
 	}, "")
 }
 
@@ -209,4 +216,42 @@ func (h *TeamHandler) RemoveProjectAccess(c *gin.Context) {
 	}
 
 	httputil.RespondNoContent(c)
+}
+
+// GetInvitationByToken returns public info about an invitation (no auth required).
+func (h *TeamHandler) GetInvitationByToken(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		httputil.RespondError(c, apierr.ErrBadRequest.WithDetail("token is required"))
+		return
+	}
+	inv, err := h.svc.GetInvitationByToken(c.Request.Context(), token)
+	if err != nil {
+		httputil.RespondError(c, apierr.ErrNotFound.WithDetail("invitation not found or expired"))
+		return
+	}
+	httputil.RespondOK(c, gin.H{
+		"email":      inv.Email,
+		"role":       inv.Role,
+		"expires_at": inv.ExpiresAt,
+	})
+}
+
+// AcceptInvitationPublic allows accepting an invitation with registration (no prior auth).
+func (h *TeamHandler) AcceptInvitationPublic(c *gin.Context) {
+	var input struct {
+		Token       string `json:"token" binding:"required"`
+		Password    string `json:"password" binding:"required,min=8"`
+		DisplayName string `json:"display_name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		httputil.RespondError(c, apierr.ErrValidation.WithDetail(err.Error()))
+		return
+	}
+	result, err := h.svc.AcceptInvitationWithRegister(c.Request.Context(), input.Token, input.Password, input.DisplayName)
+	if err != nil {
+		httputil.RespondError(c, apierr.ErrBadRequest.WithDetail(err.Error()))
+		return
+	}
+	httputil.RespondOK(c, result)
 }

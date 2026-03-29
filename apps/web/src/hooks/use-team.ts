@@ -26,9 +26,12 @@ export function useInviteMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { email: string; role: string }) =>
-      api.post<{ invitation: Invitation; invite_url: string }>("/api/v1/team/invitations", data),
-    onSuccess: () => {
-      toast.success("Invitation sent");
+      api.post<{ invitation: Invitation; invite_url: string; email_sent: boolean }>(
+        "/api/v1/team/invitations",
+        data,
+      ),
+    onSuccess: (data) => {
+      toast.success(data.email_sent ? "Invitation sent via email" : "Invitation created");
       qc.invalidateQueries({ queryKey: teamKeys.invitations });
     },
     onError: (err: any) => toast.error(err?.detail || "Failed to invite"),

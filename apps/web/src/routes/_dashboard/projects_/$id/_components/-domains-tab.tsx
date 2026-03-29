@@ -53,7 +53,14 @@ function DomainStatusBadges({ domain }: { domain: Domain }) {
   if (domain.tls) {
     if (domain.cert_expiry) {
       const days = daysUntil(domain.cert_expiry);
-      if (days < 7) {
+      if (days <= 0) {
+        cert = (
+          <Badge variant="destructive" className="text-xs">
+            <AlertTriangle className="mr-1 h-2.5 w-2.5" />
+            Cert expired
+          </Badge>
+        );
+      } else if (days < 7) {
         cert = (
           <Badge variant="destructive" className="text-xs">
             <AlertTriangle className="mr-1 h-2.5 w-2.5" />

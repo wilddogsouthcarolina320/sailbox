@@ -14,6 +14,30 @@ export function useSettings() {
   });
 }
 
+export interface DomainVerification {
+  domain: string;
+  dns: "ok" | "failed" | "wrong_ip";
+  dns_ip?: string;
+  dns_message?: string;
+  dns_warning?: string;
+  reachable?: boolean;
+  reachable_message?: string;
+  cert?: "valid" | "self_signed" | "cloudflare" | "none" | "unknown";
+  cert_message?: string;
+  cert_issuer?: string;
+  cert_expiry?: string;
+  cert_days?: number;
+}
+
+export function useVerifyDomain() {
+  return useMutation({
+    mutationFn: (domain: string) =>
+      api.get<DomainVerification>(
+        `/api/v1/settings/verify-domain?domain=${encodeURIComponent(domain)}`,
+      ),
+  });
+}
+
 export function useUpdateSetting() {
   const qc = useQueryClient();
   return useMutation({

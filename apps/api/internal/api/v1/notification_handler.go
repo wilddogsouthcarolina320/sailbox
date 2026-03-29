@@ -41,7 +41,7 @@ func (h *NotificationHandler) SaveChannel(c *gin.Context) {
 
 	orgID := middleware.GetOrgID(c)
 	if err := h.svc.SaveChannel(c.Request.Context(), orgID, input.Type, input.Enabled, input.Config); err != nil {
-		httputil.RespondError(c, err)
+		httputil.RespondError(c, apierr.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	httputil.RespondOK(c, gin.H{"status": "saved"})
@@ -58,7 +58,7 @@ func (h *NotificationHandler) TestChannel(c *gin.Context) {
 
 	orgID := middleware.GetOrgID(c)
 	if err := h.svc.TestChannel(c.Request.Context(), orgID, input.Type); err != nil {
-		httputil.RespondError(c, err)
+		httputil.RespondError(c, apierr.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	httputil.RespondOK(c, gin.H{"status": "sent"})
@@ -85,7 +85,7 @@ func (h *NotificationHandler) SaveSMTPConfig(c *gin.Context) {
 		return
 	}
 	if err := h.svc.SaveSMTPConfig(c.Request.Context(), &input); err != nil {
-		httputil.RespondError(c, err)
+		httputil.RespondError(c, apierr.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	httputil.RespondOK(c, gin.H{"status": "saved"})
@@ -93,7 +93,7 @@ func (h *NotificationHandler) SaveSMTPConfig(c *gin.Context) {
 
 func (h *NotificationHandler) TestSMTP(c *gin.Context) {
 	if err := h.svc.TestSMTP(c.Request.Context()); err != nil {
-		httputil.RespondError(c, err)
+		httputil.RespondError(c, apierr.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	httputil.RespondOK(c, gin.H{"status": "sent"})

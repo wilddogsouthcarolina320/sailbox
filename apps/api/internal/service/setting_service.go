@@ -86,6 +86,11 @@ func (s *SettingService) GetBaseDomain(ctx context.Context) string {
 	return val
 }
 
+func (s *SettingService) GetServerIP(ctx context.Context) string {
+	val, _ := s.store.Settings().Get(ctx, "server_ip")
+	return val
+}
+
 func (s *SettingService) GetAll(ctx context.Context) ([]model.Setting, error) {
 	return s.store.Settings().GetAll(ctx)
 }
@@ -169,6 +174,19 @@ func (s *SettingService) GetSMTPConfig(ctx context.Context) (*SMTPConfig, error)
 
 // SaveSMTPConfig writes SMTP settings to the settings table.
 func (s *SettingService) SaveSMTPConfig(ctx context.Context, cfg *SMTPConfig) error {
+	// Validate required fields when enabling
+	if cfg.Enabled {
+		if cfg.Host == "" {
+			return fmt.Errorf("SMTP host is required")
+		}
+		if cfg.Port == "" {
+			return fmt.Errorf("SMTP port is required")
+		}
+		if cfg.From == "" {
+			return fmt.Errorf("SMTP from address is required")
+		}
+	}
+
 	// If password is the masked placeholder, keep existing password
 	if cfg.Password == "••••••••" {
 		existing, err := s.GetSMTPConfig(ctx)

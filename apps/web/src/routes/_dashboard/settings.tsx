@@ -59,7 +59,7 @@ import {
   useTestSMTP,
 } from "@/hooks/use-notifications";
 import { useResources } from "@/hooks/use-resources";
-import { useSettings, useUpdateSetting } from "@/hooks/use-settings";
+import { useSettings, useUpdateSetting, useVerifyDomain } from "@/hooks/use-settings";
 import {
   useSaveSystemBackupConfig,
   useSystemBackupConfig,
@@ -124,19 +124,299 @@ function SettingsPage() {
 
 // ── General Tab ─────────────────────────────────────────────────────
 
+// ── Panel Domain Card + Setup Dialog ──────────────────────────────
+
+function PanelDomainCard({
+  currentDomain,
+  serverIP,
+  saveMutation,
+}: {
+  currentDomain: string;
+  serverIP: string;
+  saveMutation: ReturnType<typeof useUpdateSetting>;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
+            <Globe className="h-4 w-4" /> Panel Domain
+          </CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+            {currentDomain ? "Manage" : "Configure"}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {currentDomain ? (
+            <a
+              href={`https://${currentDomain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-sm font-medium hover:underline"
+            >
+              {currentDomain}
+            </a>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Access the panel via{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5">http://{serverIP}:3000</code>
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <PanelDomainDialog
+        open={open}
+        onOpenChange={setOpen}
+        currentDomain={currentDomain}
+        serverIP={serverIP}
+        saveMutation={saveMutation}
+      />
+    </>
+  );
+}
+
+function VerifyStep({
+  label,
+  status,
+  detail,
+}: {
+  label: string;
+  status: "pass" | "fail" | "loading" | "warn" | "skip";
+  detail: string;
+}) {
+  const icons = {
+    pass: <Check className="h-4 w-4 text-green-500" />,
+    fail: <X className="h-4 w-4 text-destructive" />,
+    loading: <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />,
+    warn: <Shield className="h-4 w-4 text-amber-500" />,
+    skip: <div className="h-4 w-4 rounded-full bg-muted" />,
+  };
+  return (
+    <div className="flex items-start gap-3 rounded-md border p-3">
+      <div className="mt-0.5 shrink-0">{icons[status]}</div>
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function PanelDomainDialog({
+  open,
+  onOpenChange,
+  currentDomain,
+  serverIP,
+  saveMutation,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  currentDomain: string;
+  serverIP: string;
+  saveMutation: ReturnType<typeof useUpdateSetting>;
+}) {
+  const [domain, setDomain] = useState("");
+  const verify = useVerifyDomain();
+  const v = verify.data;
+  const allGood = v?.dns === "ok" && v?.reachable === true && v?.cert === "valid";
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on open
+  useEffect(() => {
+    if (open) {
+      setDomain(currentDomain);
+      verify.reset();
+    }
+  }, [open]);
+
+  function handleSave() {
+    const trimmed = domain.trim().toLowerCase();
+    if (!trimmed) return;
+    saveMutation.mutate(
+      { key: "panel_domain", value: trimmed },
+      { onSuccess: () => setDomain(trimmed) },
+    );
+  }
+
+  function handleVerify() {
+    verify.mutate(domain.trim().toLowerCase());
+  }
+
+  function handleRemove() {
+    saveMutation.mutate(
+      { key: "panel_domain", value: "" },
+      {
+        onSuccess: () => {
+          setDomain("");
+          verify.reset();
+          onOpenChange(false);
+        },
+      },
+    );
+  }
+
+  const saved =
+    domain.trim().toLowerCase() === (currentDomain || "").toLowerCase() || saveMutation.isSuccess;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{currentDomain ? "Panel Domain" : "Add Panel Domain"}</DialogTitle>
+          <DialogDescription>
+            Access your panel via a custom domain with automatic HTTPS.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Domain input + Save + Verify */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Domain</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={domain}
+                onChange={(e) => {
+                  setDomain(e.target.value);
+                  verify.reset();
+                }}
+                placeholder="panel.example.com"
+                className="font-mono text-sm"
+                autoFocus
+              />
+              {!saved ? (
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={saveMutation.isPending || !domain.trim()}
+                >
+                  {saveMutation.isPending ? "..." : "Save"}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleVerify}
+                  disabled={verify.isPending || !domain.trim()}
+                >
+                  {verify.isPending ? "..." : "Verify"}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* DNS record — visible when domain is entered */}
+          {domain.trim() && (
+            <div className="rounded-md bg-muted/50 p-3">
+              <p className="mb-2 text-xs font-medium">Required DNS Record</p>
+              <div className="grid grid-cols-3 gap-x-4 font-mono text-xs">
+                <div>
+                  <p className="text-muted-foreground">Type</p>
+                  <p>A</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Name</p>
+                  <p>{domain.trim().split(".")[0] || "panel"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Value</p>
+                  <p>{serverIP}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Verification results — visible after clicking Verify */}
+          {v && (
+            <div className="space-y-2">
+              <VerifyStep
+                label="DNS"
+                status={v.dns === "ok" ? "pass" : "fail"}
+                detail={
+                  v.dns === "ok" ? `Resolves to ${v.dns_ip}` : v.dns_message || "DNS not configured"
+                }
+              />
+              {v.dns === "ok" && (
+                <VerifyStep
+                  label="HTTPS"
+                  status={v.reachable === true ? "pass" : "fail"}
+                  detail={
+                    v.reachable === true
+                      ? "Port 443 open"
+                      : v.reachable_message || "Port 443 not reachable"
+                  }
+                />
+              )}
+              {v.reachable === true && (
+                <VerifyStep
+                  label="Certificate"
+                  status={
+                    v.cert === "valid"
+                      ? "pass"
+                      : v.cert === "self_signed"
+                        ? "warn"
+                        : v.cert === "cloudflare"
+                          ? "warn"
+                          : "fail"
+                  }
+                  detail={
+                    v.cert === "valid"
+                      ? `${v.cert_issuer} — expires ${v.cert_expiry}`
+                      : v.cert === "self_signed"
+                        ? "Certificate is being issued — verify again in a minute"
+                        : v.cert === "cloudflare"
+                          ? "Cloudflare proxy detected — set SSL to Full (Strict)"
+                          : "No certificate found"
+                  }
+                />
+              )}
+              {allGood && (
+                <p className="rounded-md border border-green-500/20 bg-green-500/5 p-2.5 text-center text-xs text-green-600">
+                  Live at{" "}
+                  <a
+                    href={`https://${domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium underline"
+                  >
+                    https://{domain}
+                  </a>
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {currentDomain && (
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-auto text-destructive"
+              onClick={handleRemove}
+              disabled={saveMutation.isPending}
+            >
+              Remove Domain
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function GeneralTab() {
   const { data: settings, isLoading } = useSettings();
   const saveDomain = useUpdateSetting();
   const savePanel = useUpdateSetting();
   const saveEmail = useUpdateSetting();
   const [baseDomain, setBaseDomain] = useState("");
-  const [panelDomain, setPanelDomain] = useState("");
   const [httpsEmail, setHttpsEmail] = useState("");
 
   useEffect(() => {
     if (settings) {
       setBaseDomain(settings.base_domain ?? "");
-      setPanelDomain(settings.panel_domain ?? "");
       setHttpsEmail(settings.https_email ?? "");
     }
   }, [settings]);
@@ -232,47 +512,11 @@ function GeneralTab() {
       </Card>
 
       {/* Panel Domain */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm font-medium">
-            <Globe className="h-4 w-4" /> Panel Domain
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Access the Sailbox panel via a custom domain instead of IP:port. Point an A record to
-            your server IP, then enter the domain below.
-          </p>
-          <div className="space-y-2">
-            <Label>Domain</Label>
-            <div className="flex items-center gap-3">
-              <Input
-                value={panelDomain}
-                onChange={(e) => setPanelDomain(e.target.value)}
-                placeholder="panel.example.com"
-                className="max-w-md font-mono"
-              />
-              <Button
-                onClick={() =>
-                  savePanel.mutate({
-                    key: "panel_domain",
-                    value: panelDomain,
-                  })
-                }
-                disabled={savePanel.isPending || panelDomain === (settings?.panel_domain ?? "")}
-              >
-                <Save className="h-3.5 w-3.5" /> {savePanel.isPending ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </div>
-          {panelDomain && (
-            <p className="text-xs text-muted-foreground">
-              After saving, your panel will be accessible at{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5">https://{panelDomain}</code>
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <PanelDomainCard
+        currentDomain={settings?.panel_domain ?? ""}
+        serverIP={settings?.server_ip ?? ""}
+        saveMutation={savePanel}
+      />
 
       {/* TLS / HTTPS */}
       <Card>
@@ -700,10 +944,10 @@ function SMTPTab() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => saveSMTP.mutate(form, { onSuccess: () => testSMTP.mutate() })}
-              disabled={testSMTP.isPending || saveSMTP.isPending || !form.enabled}
+              onClick={() => testSMTP.mutate()}
+              disabled={testSMTP.isPending || !form.enabled}
             >
-              {testSMTP.isPending || saveSMTP.isPending ? "Testing..." : "Test"}
+              {testSMTP.isPending ? "Testing..." : "Test"}
             </Button>
             <Button size="sm" onClick={() => saveSMTP.mutate(form)} disabled={saveSMTP.isPending}>
               <Save className="mr-1 h-3.5 w-3.5" />
@@ -847,15 +1091,10 @@ function ChannelCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                saveChannel.mutate(
-                  { type: def.type, enabled, config },
-                  { onSuccess: () => testChannel.mutate(def.type) },
-                )
-              }
-              disabled={testChannel.isPending || saveChannel.isPending}
+              onClick={() => testChannel.mutate(def.type)}
+              disabled={testChannel.isPending}
             >
-              {testChannel.isPending || saveChannel.isPending ? "Testing..." : "Test"}
+              {testChannel.isPending ? "Testing..." : "Test"}
             </Button>
             <Button
               size="sm"

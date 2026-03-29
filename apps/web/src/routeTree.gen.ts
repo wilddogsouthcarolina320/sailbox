@@ -13,6 +13,7 @@ import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthInviteRouteImport } from './routes/auth/invite'
 import { Route as DashboardVolumesRouteImport } from './routes/_dashboard/volumes'
 import { Route as DashboardTraefikRouteImport } from './routes/_dashboard/traefik'
 import { Route as DashboardTeamRouteImport } from './routes/_dashboard/team'
@@ -47,6 +48,11 @@ const AuthRegisterRoute = AuthRegisterRouteImport.update({
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthInviteRoute = AuthInviteRouteImport.update({
+  id: '/auth/invite',
+  path: '/auth/invite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardVolumesRoute = DashboardVolumesRouteImport.update({
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/team': typeof DashboardTeamRoute
   '/traefik': typeof DashboardTraefikRoute
   '/volumes': typeof DashboardVolumesRoute
+  '/auth/invite': typeof AuthInviteRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/projects/$id': typeof DashboardProjectsIdRouteWithChildren
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/team': typeof DashboardTeamRoute
   '/traefik': typeof DashboardTraefikRoute
   '/volumes': typeof DashboardVolumesRoute
+  '/auth/invite': typeof AuthInviteRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/projects/$id': typeof DashboardProjectsIdIndexRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/_dashboard/team': typeof DashboardTeamRoute
   '/_dashboard/traefik': typeof DashboardTraefikRoute
   '/_dashboard/volumes': typeof DashboardVolumesRoute
+  '/auth/invite': typeof AuthInviteRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/_dashboard/projects_/$id': typeof DashboardProjectsIdRouteWithChildren
@@ -213,6 +222,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/traefik'
     | '/volumes'
+    | '/auth/invite'
     | '/auth/login'
     | '/auth/register'
     | '/projects/$id'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/traefik'
     | '/volumes'
+    | '/auth/invite'
     | '/auth/login'
     | '/auth/register'
     | '/projects/$id'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/_dashboard/team'
     | '/_dashboard/traefik'
     | '/_dashboard/volumes'
+    | '/auth/invite'
     | '/auth/login'
     | '/auth/register'
     | '/_dashboard/projects_/$id'
@@ -266,6 +278,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  AuthInviteRoute: typeof AuthInviteRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
 }
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/login'
       fullPath: '/auth/login'
       preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/invite': {
+      id: '/auth/invite'
+      path: '/auth/invite'
+      fullPath: '/auth/invite'
+      preLoaderRoute: typeof AuthInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_dashboard/volumes': {
@@ -469,6 +489,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  AuthInviteRoute: AuthInviteRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
 }

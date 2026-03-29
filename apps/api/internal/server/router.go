@@ -83,6 +83,11 @@ func NewRouter(deps *RouterDeps) *gin.Engine {
 		apiV1.POST("/webhooks/github/:appId", webhookHandler.GitHub)
 		apiV1.POST("/webhooks/gitlab/:appId", webhookHandler.GitLab)
 
+		// Team invitations (public — invitee may not have an account yet)
+		teamPublic := v1.NewTeamHandler(deps.Services.Team, deps.Services.Notification, deps.AppURL)
+		apiV1.GET("/team/invitations/info", teamPublic.GetInvitationByToken)
+		apiV1.POST("/team/invitations/accept-public", loginRL, teamPublic.AcceptInvitationPublic)
+
 		// System restore (requires setup secret + only works on uninitialized system)
 		restoreRL := middleware.RateLimit(5, 5*time.Minute)
 		setupAuth := middleware.RequireSetupSecret(deps.SetupSecret)
@@ -250,6 +255,7 @@ func NewRouter(deps *RouterDeps) *gin.Engine {
 			settings := v1.NewSettingHandler(deps.Services.Setting)
 			protected.GET("/settings", settings.GetAll)
 			protected.PUT("/settings", settings.Update)
+			protected.GET("/settings/verify-domain", settings.VerifyDomain)
 
 			// Notifications
 			notif := v1.NewNotificationHandler(deps.Services.Notification)
@@ -268,7 +274,7 @@ func NewRouter(deps *RouterDeps) *gin.Engine {
 			protected.DELETE("/nodes/:id", nodeHandler.Delete)
 
 			// Team management
-			team := v1.NewTeamHandler(deps.Services.Team)
+			team := v1.NewTeamHandler(deps.Services.Team, deps.Services.Notification, deps.AppURL)
 			protected.GET("/team/members", team.ListMembers)
 			protected.PATCH("/team/members/:id/role", middleware.RequireRole("owner"), team.UpdateMemberRole)
 			protected.DELETE("/team/members/:id", middleware.RequireRole("owner"), team.RemoveMember)

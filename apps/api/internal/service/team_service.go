@@ -9,18 +9,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 
+	"github.com/sailboxhq/sailbox/apps/api/internal/auth"
 	"github.com/sailboxhq/sailbox/apps/api/internal/model"
 	"github.com/sailboxhq/sailbox/apps/api/internal/store"
 )
 
 type TeamService struct {
-	store  store.Store
-	logger *slog.Logger
+	store      store.Store
+	jwtManager *auth.JWTManager
+	logger     *slog.Logger
 }
 
-func NewTeamService(s store.Store, logger *slog.Logger) *TeamService {
-	return &TeamService{store: s, logger: logger}
+func NewTeamService(s store.Store, jwtManager *auth.JWTManager, logger *slog.Logger) *TeamService {
+	return &TeamService{store: s, jwtManager: jwtManager, logger: logger}
 }
 
 // ============================================================================
@@ -270,4 +273,68 @@ func (s *TeamService) GetProjectAccess(ctx context.Context, projectID, userID uu
 
 func (s *TeamService) ListUserProjects(ctx context.Context, userID uuid.UUID) ([]model.ProjectMember, error) {
 	return s.store.ProjectMembers().ListByUser(ctx, userID)
+}
+
+func (s *TeamService) GetInvitationByToken(ctx context.Context, token string) (*model.Invitation, error) {
+	inv, err := s.store.Invitations().GetByToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	if time.Now().After(inv.ExpiresAt) {
+		return nil, errors.New("invitation has expired")
+	}
+	if inv.AcceptedAt != nil {
+		return nil, errors.New("invitation already accepted")
+	}
+	return inv, nil
+}
+
+func (s *TeamService) AcceptInvitationWithRegister(ctx context.Context, token, password, displayName string) (*AuthResult, error) {
+	inv, err := s.GetInvitationByToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if user already exists
+	_, userErr := s.store.Users().GetByEmail(ctx, inv.Email)
+	if userErr == nil {
+		return nil, errors.New("account already exists — log in first, then accept the invitation from your dashboard")
+	}
+
+	// Create the user
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &model.User{
+		OrgID:        inv.OrgID,
+		Email:        inv.Email,
+		PasswordHash: string(hash),
+		DisplayName:  displayName,
+		Role:         model.Role(inv.Role),
+	}
+	if err := s.store.Users().Create(ctx, user); err != nil {
+		return nil, err
+	}
+
+	// Mark invitation as accepted
+	now := time.Now()
+	inv.AcceptedAt = &now
+	_ = s.store.Invitations().Update(ctx, inv)
+
+	// Generate tokens
+	tokens, err := s.jwtManager.GenerateTokenPair(user.ID, user.OrgID, string(user.Role), user.TokenVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logger.Info("invitation accepted via registration", slog.String("email", inv.Email))
+
+	return &AuthResult{
+		User:         user,
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+		ExpiresAt:    tokens.ExpiresAt,
+	}, nil
 }

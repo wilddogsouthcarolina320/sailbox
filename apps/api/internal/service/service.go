@@ -58,7 +58,7 @@ func NewContainer(
 		Resource:     NewResourceService(s, logger),
 		Metrics:      NewMetricsCollector(metricsStore, s, orch, logger, notifSvc),
 		CronJob:      NewCronJobService(s, orch, logger),
-		Team:         NewTeamService(s, logger),
+		Team:         NewTeamService(s, jwtManager, logger),
 		Notification: notifSvc,
 		Version:      NewVersionService(logger),
 		SystemBackup: NewSystemBackupService(s, settingSvc, dbURL, logger),

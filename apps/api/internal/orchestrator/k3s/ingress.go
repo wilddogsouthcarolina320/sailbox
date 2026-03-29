@@ -11,9 +11,11 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/sailboxhq/sailbox/apps/api/internal/model"
 	"github.com/sailboxhq/sailbox/apps/api/internal/orchestrator"
@@ -103,7 +105,7 @@ func (o *Orchestrator) CreateIngress(ctx context.Context, domain *model.Domain, 
 
 	existing, err := o.client.NetworkingV1().Ingresses(ns).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			_, err = o.client.NetworkingV1().Ingresses(ns).Create(ctx, ingress, metav1.CreateOptions{})
 		} else {
 			return err
@@ -188,6 +190,11 @@ func (o *Orchestrator) EnsurePanelIngress(ctx context.Context, domain, httpsEmai
 		return fmt.Errorf("panel ingress: %w", err)
 	}
 
+	// Ensure K8s Service + Endpoints pointing to the host (Sailbox runs in Docker, not K8s)
+	if err := o.ensurePanelService(ctx); err != nil {
+		return fmt.Errorf("panel service: %w", err)
+	}
+
 	annotations := map[string]string{
 		"kubernetes.io/ingress.class": "traefik",
 	}
@@ -238,11 +245,19 @@ func (o *Orchestrator) EnsurePanelIngress(ctx context.Context, domain, httpsEmai
 		},
 	}
 
+	// Add TLS block when HTTPS is enabled (Traefik ACME manages the cert)
+	if httpsEmail != "" {
+		ingress.Spec.TLS = []networkingv1.IngressTLS{
+			{Hosts: []string{domain}},
+		}
+	}
+
 	existing, err := o.client.NetworkingV1().Ingresses(panelNamespace).Get(ctx, panelIngressName, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		_, err = o.client.NetworkingV1().Ingresses(panelNamespace).Create(ctx, ingress, metav1.CreateOptions{})
 	} else if err == nil {
 		existing.Annotations = annotations
+		existing.Spec.TLS = ingress.Spec.TLS
 		existing.Labels = ingress.Labels
 		existing.Spec = ingress.Spec
 		_, err = o.client.NetworkingV1().Ingresses(panelNamespace).Update(ctx, existing, metav1.UpdateOptions{})
@@ -256,9 +271,69 @@ func (o *Orchestrator) EnsurePanelIngress(ctx context.Context, domain, httpsEmai
 	return nil
 }
 
+// ensurePanelService creates a headless Service + Endpoints in the panel namespace
+// pointing to the host's IP:3000 (Sailbox runs as a Docker container, not a K8s Pod).
+func (o *Orchestrator) ensurePanelService(ctx context.Context) error {
+	svcName := "sailbox"
+	port := int32(3000)
+
+	// Get node IP for the endpoint
+	nodes, err := o.client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil || len(nodes.Items) == 0 {
+		return fmt.Errorf("no nodes found")
+	}
+	var nodeIP string
+	for _, addr := range nodes.Items[0].Status.Addresses {
+		if addr.Type == corev1.NodeInternalIP {
+			nodeIP = addr.Address
+			break
+		}
+	}
+	if nodeIP == "" {
+		return fmt.Errorf("cannot determine node IP")
+	}
+
+	// Ensure Service
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      svcName,
+			Namespace: panelNamespace,
+			Labels:    map[string]string{"app.kubernetes.io/managed-by": "sailbox"},
+		},
+		Spec: corev1.ServiceSpec{
+			Type:  corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{{Port: port, TargetPort: intstr.FromInt32(port)}},
+		},
+	}
+	_, err = o.client.CoreV1().Services(panelNamespace).Create(ctx, svc, metav1.CreateOptions{})
+	if err != nil && !k8serrors.IsAlreadyExists(err) {
+		return fmt.Errorf("create panel service: %w", err)
+	}
+
+	// Ensure Endpoints
+	ep := &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      svcName,
+			Namespace: panelNamespace,
+		},
+		Subsets: []corev1.EndpointSubset{{
+			Addresses: []corev1.EndpointAddress{{IP: nodeIP}},
+			Ports:     []corev1.EndpointPort{{Port: port}},
+		}},
+	}
+	_, err = o.client.CoreV1().Endpoints(panelNamespace).Create(ctx, ep, metav1.CreateOptions{})
+	if k8serrors.IsAlreadyExists(err) {
+		_, err = o.client.CoreV1().Endpoints(panelNamespace).Update(ctx, ep, metav1.UpdateOptions{})
+	}
+	if err != nil {
+		return fmt.Errorf("create panel endpoints: %w", err)
+	}
+	return nil
+}
+
 func (o *Orchestrator) DeletePanelIngress(ctx context.Context) error {
 	err := o.client.NetworkingV1().Ingresses(panelNamespace).Delete(ctx, panelIngressName, metav1.DeleteOptions{})
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		return nil
 	}
 	if err != nil {
